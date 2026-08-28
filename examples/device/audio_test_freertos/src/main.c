@@ -214,6 +214,13 @@ void audio_isr_task(void *param) {
   (void) param;
   while (1) {
     vTaskDelay(1);
+    // Our 1 ms tick and the host SOF are independent clocks. The driver EP IN FIFO is
+    // overwritable, so a frame written when it is full drops the oldest samples and
+    // tears the stream. Skip the frame instead whenever we run ahead of the host.
+    tu_fifo_t *ep_in_ff = tud_audio_get_ep_in_ff();
+    if (ep_in_ff == NULL || tu_fifo_remaining(ep_in_ff) < sizeof(test_buffer_audio)) {
+      continue;
+    }
     for (size_t cnt = 0; cnt < sizeof(test_buffer_audio) / 2; cnt++) {
       test_buffer_audio[cnt] = startVal++;
     }
